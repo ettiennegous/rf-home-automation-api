@@ -8,7 +8,7 @@ config_file_path = "config.json"
 
 device_states = {}
 
-@app.route("/rfremotefan/api/v1.0/status", methods=["GET"])
+@app.route("/home/api/v1.0/status", methods=["GET"])
 def getStatus():
 	device_id = request.args.get('id')
 	if device_id == None:
@@ -17,36 +17,36 @@ def getStatus():
 	response = {}
 	response["id"] = int(device_id)
 	if device_id in device_states:
-		response["speed"] = int(device_states[device_id])
+		response["action"] = device_states[device_id]
 	else:
-		response["speed"] = 0
+		response["action"] = "light_off"
 	return json.dumps(response)
 
-@app.route("/rfremotefan/api/v1.0/update", methods=["GET","POST"])
+@app.route("/home/api/v1.0/update", methods=["GET","POST"])
 def update():
 	device_id = ""
-	speed = ""
+	action = ""
 	if request.method == "GET":
 		device_id = request.args.get('id')
-		speed = request.args.get('speed')
+		action = request.args.get('action')
 	else:
 		dict = json.loads(request.data)
 		device_id = dict["id"]
-		speed = dict["speed"]
-	print("%s-%s" % (device_id, speed))
-	device_states[device_id] = speed
-	signal = getPilightRawSignal(int(device_id), int(speed))
+		action = dict["action"]
+	print("%s-%s" % (device_id, action))
+	device_states[device_id] = action
+	signal = getPilightRawSignal(int(device_id), action)
 	response = {}
 	if signal is not None:
 		os.system("pilight-send -p raw -c '%s'" % signal)
 		response["id"] = int(device_id)
-		response["speed"] = int(speed)
+		response["action"] = action
 		response["success"] = 1
 	else:
 		response["success"] = 0
 	return json.dumps(response)
 
-def getPilightRawSignal(device_id, speed):
+def getPilightRawSignal(device_id, action):
 	config_file = open(config_file_path,"r")
 	config_info = config_file.read()
 	config_json_info = json.loads(config_info)
@@ -56,8 +56,8 @@ def getPilightRawSignal(device_id, speed):
 		if accessory_id == device_id:
 			pilight_raw_signals = accessory["pilight_raw_signals"]
 			for signal in pilight_raw_signals:
-				signal_speed = signal["speed"]
-				if signal_speed == speed:
+				signal_action = signal["action"]
+				if signal_action == action:
 					return signal["signal"]			
 	
 	return None
